@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8082" doc:name="HTTP Listener Configuration"/>
+    <vm:connector name="VM" queueTimeout="1000" doc:name="VM"> 
+   
+</vm:connector>
+<flow name="testFlow5">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/vm" allowedMethods="post" doc:name="HTTP"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach doc:name="For Each">
+            <logger message="before vm #[payload]" level="INFO" doc:name="Logger"/>
+            <idempotent-message-filter valueExpression="#[payload!=1]" doc:name="Idempotent Message">
+                <in-memory-store name="test" entryTTL="20" expirationInterval="200"/>
+            </idempotent-message-filter>
+            <vm:outbound-endpoint exchange-pattern="one-way" path="test" connector-ref="VM" doc:name="VM" />
+        </foreach>
+        <catch-exception-strategy doc:name="Catch Exception Strategy">
+            <logger message="Exception #[exception.message]" level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+    </flow>
+    <flow name="testsampleFlow">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="test" connector-ref="VM" doc:name="VM"/>
+        <logger message="after vm message #[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+</mule>

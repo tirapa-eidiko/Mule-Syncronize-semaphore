@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns:CiscoSpark="http://www.mulesoft.org/schema/mule/CiscoSpark" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/CiscoSpark http://www.mulesoft.org/schema/mule/CiscoSpark/current/mule-CiscoSpark.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
+<spring:beans>
+		<spring:bean id="PollSynchronizer" name="PollSynchronizer" class="org.anil.PollSynchronizer" scope="singleton" />
+	</spring:beans>
+    <objectstore:config name="ObjectStore__Connector" partition="name" doc:name="ObjectStore: Connector"/>
+    <flow name="pollstoptestFlow">
+        <poll doc:name="Poll" >
+            <expression-component doc:name="Expression"><![CDATA[app.registry['PollSynchronizer'].lock();]]></expression-component>
+        </poll>
+        <objectstore:store config-ref="ObjectStore__Connector" key="#['a']" value-ref="#['a']" doc:name="ObjectStore"/>
+        <objectstore:store config-ref="ObjectStore__Connector" key="#['b']" value-ref="#['a']" doc:name="ObjectStore"/>
+        <logger message="started" level="INFO" doc:name="Logger"/>
+        <objectstore:remove config-ref="ObjectStore__Connector" key="#['a']" doc:name="ObjectStore"/>
+        <objectstore:retrieve-all-keys config-ref="ObjectStore__Connector" doc:name="ObjectStore"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload.size()&gt;0]">
+                <logger message="Test before sleep" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <expression-component doc:name="Expression"><![CDATA[app.registry['PollSynchronizer'].unlock();]]></expression-component>
+            </otherwise>
+        </choice>
+
+    </flow>
+</mule>
